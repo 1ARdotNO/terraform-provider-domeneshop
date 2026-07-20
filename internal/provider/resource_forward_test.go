@@ -7,15 +7,16 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
-func TestAccResourceForward(t *testing.T) {
+func TestAccResourceForward_basic(t *testing.T) {
 	domain := os.Getenv("DOMENESHOP_DOMAIN")
 	host := acctest.RandString(6)
 	resource.UnitTest(t, resource.TestCase{
 		PreCheck:          func() { testAccPreCheck(t) },
 		ProviderFactories: providerFactories,
-		// TODO: CheckDestroy: ,
+		CheckDestroy:      testAccCheckForwardDestroy,
 		Steps: []resource.TestStep{
 			{
 				// test create
@@ -35,29 +36,18 @@ func TestAccResourceForward(t *testing.T) {
 					resource.TestCheckResourceAttr("domeneshop_forward.test", "frame", "false"),
 				),
 			},
-		},
-	})
-}
-
-func TestAccResourceForward_Import(t *testing.T) {
-	domainID := os.Getenv("DOMENESHOP_DOMAIN_ID")
-	if domainID == "" {
-		t.Skip(`Skipping test because "DOMENESHOP_DOMAIN_ID" is not set`)
-	}
-	host := acctest.RandString(6)
-	resource.UnitTest(t, resource.TestCase{
-		PreCheck:          func() { testAccPreCheck(t) },
-		ProviderFactories: providerFactories,
-		// TODO: CheckDestroy: ,
-		Steps: []resource.TestStep{
 			{
-				Config: testAccResourceForwardImportConfig(domainID, host),
-			},
-			{
-				ResourceName:        "domeneshop_forward.test",
-				ImportStateIdPrefix: fmt.Sprintf("%s/", domainID),
-				ImportState:         true,
-				ImportStateVerify:   true,
+				// test import
+				ResourceName:      "domeneshop_forward.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateIdFunc: func(s *terraform.State) (string, error) {
+					rs, ok := s.RootModule().Resources["domeneshop_forward.test"]
+					if !ok {
+						return "", fmt.Errorf("resource not found in state")
+					}
+					return fmt.Sprintf("%s/%s", rs.Primary.Attributes["domain_id"], rs.Primary.ID), nil
+				},
 			},
 		},
 	})
@@ -75,14 +65,4 @@ resource "domeneshop_forward" "test" {
   url       = "%s"
 }
 `, domain, host, url)
-}
-
-func testAccResourceForwardImportConfig(domain string, host string) string {
-	return fmt.Sprintf(`
-resource "domeneshop_forward" "test" {
-  domain_id = %s
-  host      = "%s"
-  url       = "https://example.com/"
-}
-`, domain, host)
 }

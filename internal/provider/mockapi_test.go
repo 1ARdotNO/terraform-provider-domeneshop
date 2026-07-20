@@ -498,6 +498,10 @@ func (m *mockDomeneshop) handleForwards(w http.ResponseWriter, r *http.Request, 
 		if !ok {
 			return
 		}
+		if _, ok := fwd["frame"]; !ok {
+			// The real API always returns the frame flag, defaulting to false.
+			fwd["frame"] = false
+		}
 		fwd["host"] = host
 		forwards[host] = fwd
 		m.writeJSON(w, http.StatusOK, fwd)

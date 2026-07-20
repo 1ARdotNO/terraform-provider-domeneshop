@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 )
 
-func TestAccDataSourceDomains(t *testing.T) {
+func TestAccDataSourceDomains_basic(t *testing.T) {
 	domain := os.Getenv("DOMENESHOP_DOMAIN")
 	resource.UnitTest(t, resource.TestCase{
 		PreCheck:          func() { testAccPreCheck(t) },

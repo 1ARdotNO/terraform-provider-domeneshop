@@ -1,11 +1,15 @@
 package provider
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+	"github.com/innovationnorway/go-domeneshop/api/v0/domeneshop"
 )
 
 // TestMain starts an in-process mock of the Domeneshop API (validated against
@@ -23,7 +27,6 @@ func TestMain(m *testing.M) {
 		os.Setenv("DOMENESHOP_TOKEN", "test-token")
 		os.Setenv("DOMENESHOP_SECRET", "test-secret")
 		os.Setenv("DOMENESHOP_DOMAIN", "example.com")
-		os.Setenv("DOMENESHOP_DOMAIN_ID", "1")
 		os.Setenv("DOMENESHOP_HOST", srv.URL)
 		code := m.Run()
 		srv.Close()
@@ -45,6 +48,60 @@ func TestProvider(t *testing.T) {
 	if err := New("dev")().InternalValidate(); err != nil {
 		t.Fatalf("err: %s", err)
 	}
+}
+
+// testAccAPIClient returns a Domeneshop API client configured from the same
+// environment variables the provider under test uses, for out-of-band checks
+// such as CheckDestroy.
+func testAccAPIClient() (*domeneshop.APIClient, context.Context) {
+	config := domeneshop.NewConfiguration()
+	if host := os.Getenv("DOMENESHOP_HOST"); host != "" {
+		config.Servers = domeneshop.ServerConfigurations{
+			{URL: host},
+		}
+	}
+	auth := context.WithValue(context.Background(), domeneshop.ContextBasicAuth, domeneshop.BasicAuth{
+		UserName: os.Getenv("DOMENESHOP_TOKEN"),
+		Password: os.Getenv("DOMENESHOP_SECRET"),
+	})
+	return domeneshop.NewAPIClient(config), auth
+}
+
+func testAccCheckRecordDestroy(s *terraform.State) error {
+	client, auth := testAccAPIClient()
+	for _, rs := range s.RootModule().Resources {
+		if rs.Type != "domeneshop_record" {
+			continue
+		}
+		domainID, _ := strconv.Atoi(rs.Primary.Attributes["domain_id"])
+		recordID, _ := strconv.Atoi(rs.Primary.ID)
+		_, r, err := client.DnsApi.GetRecord(auth, int32(domainID), int32(recordID)).Execute()
+		if err.Error() == "" {
+			return fmt.Errorf("DNS record %s still exists", rs.Primary.ID)
+		}
+		if r == nil || r.StatusCode != 404 {
+			return fmt.Errorf("unexpected error checking DNS record %s: %s", rs.Primary.ID, err.Error())
+		}
+	}
+	return nil
+}
+
+func testAccCheckForwardDestroy(s *terraform.State) error {
+	client, auth := testAccAPIClient()
+	for _, rs := range s.RootModule().Resources {
+		if rs.Type != "domeneshop_forward" {
+			continue
+		}
+		domainID, _ := strconv.Atoi(rs.Primary.Attributes["domain_id"])
+		_, r, err := client.ForwardsApi.GetForward(auth, int32(domainID), rs.Primary.ID).Execute()
+		if err.Error() == "" {
+			return fmt.Errorf("HTTP forward %s still exists", rs.Primary.ID)
+		}
+		if r == nil || r.StatusCode != 404 {
+			return fmt.Errorf("unexpected error checking HTTP forward %s: %s", rs.Primary.ID, err.Error())
+		}
+	}
+	return nil
 }
 
 func testAccPreCheck(t *testing.T) {

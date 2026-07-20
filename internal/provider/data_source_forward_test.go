@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 )
 
-func TestAccDataSourceForward(t *testing.T) {
+func TestAccDataSourceForward_basic(t *testing.T) {
 	domain := os.Getenv("DOMENESHOP_DOMAIN")
 	host := acctest.RandString(6)
 	resource.UnitTest(t, resource.TestCase{

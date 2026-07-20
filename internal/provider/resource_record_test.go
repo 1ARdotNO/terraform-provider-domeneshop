@@ -8,6 +8,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
 func TestAccResourceRecord_A(t *testing.T) {
@@ -16,7 +17,7 @@ func TestAccResourceRecord_A(t *testing.T) {
 	resource.UnitTest(t, resource.TestCase{
 		PreCheck:          func() { testAccPreCheck(t) },
 		ProviderFactories: providerFactories,
-		// TODO: CheckDestroy: ,
+		CheckDestroy:      testAccCheckRecordDestroy,
 		Steps: []resource.TestStep{
 			{
 				// test create
@@ -38,6 +39,19 @@ func TestAccResourceRecord_A(t *testing.T) {
 					resource.TestCheckResourceAttr("domeneshop_record.test", "ttl", "300"),
 				),
 			},
+			{
+				// test import
+				ResourceName:      "domeneshop_record.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateIdFunc: func(s *terraform.State) (string, error) {
+					rs, ok := s.RootModule().Resources["domeneshop_record.test"]
+					if !ok {
+						return "", fmt.Errorf("resource not found in state")
+					}
+					return fmt.Sprintf("%s/%s", rs.Primary.Attributes["domain_id"], rs.Primary.ID), nil
+				},
+			},
 		},
 	})
 }
@@ -48,7 +62,7 @@ func TestAccResourceRecord_AAAA(t *testing.T) {
 	resource.UnitTest(t, resource.TestCase{
 		PreCheck:          func() { testAccPreCheck(t) },
 		ProviderFactories: providerFactories,
-		// TODO: CheckDestroy: ,
+		CheckDestroy:      testAccCheckRecordDestroy,
 		Steps: []resource.TestStep{
 			{
 				// test create
@@ -70,7 +84,7 @@ func TestAccResourceRecord_CAA(t *testing.T) {
 	resource.UnitTest(t, resource.TestCase{
 		PreCheck:          func() { testAccPreCheck(t) },
 		ProviderFactories: providerFactories,
-		// TODO: CheckDestroy: ,
+		CheckDestroy:      testAccCheckRecordDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccResourceRecordCAAConfig(domain, host),
@@ -94,7 +108,7 @@ func TestAccResourceRecord_CNAME(t *testing.T) {
 	resource.UnitTest(t, resource.TestCase{
 		PreCheck:          func() { testAccPreCheck(t) },
 		ProviderFactories: providerFactories,
-		// TODO: CheckDestroy: ,
+		CheckDestroy:      testAccCheckRecordDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccResourceRecordConfig(domain, host, "CNAME", data),
@@ -115,7 +129,7 @@ func TestAccResourceRecord_MX(t *testing.T) {
 	resource.UnitTest(t, resource.TestCase{
 		PreCheck:          func() { testAccPreCheck(t) },
 		ProviderFactories: providerFactories,
-		// TODO: CheckDestroy: ,
+		CheckDestroy:      testAccCheckRecordDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccResourceRecordMXConfig(domain, host),
@@ -138,7 +152,7 @@ func TestAccResourceRecord_NS(t *testing.T) {
 	resource.UnitTest(t, resource.TestCase{
 		PreCheck:          func() { testAccPreCheck(t) },
 		ProviderFactories: providerFactories,
-		// TODO: CheckDestroy: ,
+		CheckDestroy:      testAccCheckRecordDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccResourceRecordConfig(domain, host, "NS", data),
@@ -159,7 +173,7 @@ func TestAccResourceRecord_SRV(t *testing.T) {
 	resource.UnitTest(t, resource.TestCase{
 		PreCheck:          func() { testAccPreCheck(t) },
 		ProviderFactories: providerFactories,
-		// TODO: CheckDestroy: ,
+		CheckDestroy:      testAccCheckRecordDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccResourceRecordSRVConfig(domain, host),
@@ -183,7 +197,7 @@ func TestAccResourceRecord_TLSA(t *testing.T) {
 	resource.UnitTest(t, resource.TestCase{
 		PreCheck:          func() { testAccPreCheck(t) },
 		ProviderFactories: providerFactories,
-		// TODO: CheckDestroy: ,
+		CheckDestroy:      testAccCheckRecordDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccResourceRecordTLSAConfig(domain, host),
@@ -196,30 +210,6 @@ func TestAccResourceRecord_TLSA(t *testing.T) {
 					resource.TestCheckResourceAttr("domeneshop_record.test", "selector", "1"),
 					resource.TestCheckResourceAttr("domeneshop_record.test", "dtype", "1"),
 				),
-			},
-		},
-	})
-}
-
-func TestAccResourceRecord_Import(t *testing.T) {
-	domainID := os.Getenv("DOMENESHOP_DOMAIN_ID")
-	if domainID == "" {
-		t.Skip(`Skipping test because "DOMENESHOP_DOMAIN_ID" is not set`)
-	}
-	host := acctest.RandomWithPrefix("test")
-	resource.UnitTest(t, resource.TestCase{
-		PreCheck:          func() { testAccPreCheck(t) },
-		ProviderFactories: providerFactories,
-		// TODO: CheckDestroy: ,
-		Steps: []resource.TestStep{
-			{
-				Config: testAccResourceRecordImportConfig(domainID, host),
-			},
-			{
-				ResourceName:        "domeneshop_record.test",
-				ImportStateIdPrefix: fmt.Sprintf("%s/", domainID),
-				ImportState:         true,
-				ImportStateVerify:   true,
 			},
 		},
 	})
@@ -310,18 +300,6 @@ resource "domeneshop_record" "test" {
   usage     = 3
   selector  = 1
   dtype     = 1
-}
-`, domain, host)
-}
-
-func testAccResourceRecordImportConfig(domain string, host string) string {
-	return fmt.Sprintf(`
-resource "domeneshop_record" "test" {
-  domain_id = %s
-  host      = "%s"
-  type      = "CNAME"
-  data      = "example.com."
-  ttl       = 300
 }
 `, domain, host)
 }

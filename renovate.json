@@ -1,0 +1,39 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard",
+    "group:allNonMajor"
+  ],
+  "labels": ["dependencies"],
+  "prConcurrentLimit": 0,
+  "prHourlyLimit": 0,
+  "rangeStrategy": "bump",
+  "automerge": true,
+  "platformAutomerge": true,
+  "major": {
+    "automerge": true
+  },
+  "postUpdateOptions": ["gomodTidy"],
+  "vulnerabilityAlerts": {
+    "labels": ["security"],
+    "automerge": true
+  },
+  "packageRules": [
+    {
+      "description": "Heavy automerge for everything — the CI suite (build + contract-validated acceptance tests + tfproviderlint + CodeQL + govulncheck) is the safety net, so anything that stays green merges itself.",
+      "matchManagers": ["gomod", "github-actions"],
+      "automerge": true
+    },
+    {
+      "description": "Group all GitHub Actions bumps into one PR.",
+      "matchManagers": ["github-actions"],
+      "groupName": "github-actions"
+    },
+    {
+      "description": "The generated go-domeneshop API client lives in a dead upstream repo pinned by pseudo-version; there is nothing to bump until we fork or regenerate it.",
+      "matchPackageNames": ["github.com/innovationnorway/go-domeneshop"],
+      "enabled": false
+    }
+  ]
+}
