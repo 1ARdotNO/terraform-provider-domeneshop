@@ -1,13 +1,11 @@
+# No path filters: the tfproviderlint check is required by branch protection,
+# so it must report a status on every PR or auto-merge would wait forever.
 name: Terraform provider lint
 on:
   push:
-    paths:
-      - '**.go'
-  pull_request:
     branches:
       - main
-    paths:
-      - '**.go'
+  pull_request:
 jobs:
   tfproviderlint:
     runs-on: ubuntu-latest
