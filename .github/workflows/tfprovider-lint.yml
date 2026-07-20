@@ -13,6 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - uses: bflad/tfproviderlint-github-action@master
+    - uses: actions/setup-go@v5
       with:
-        args: ./...
+        go-version-file: 'go.mod'
+    - name: Run tfproviderlint
+      run: go run github.com/bflad/tfproviderlint/cmd/tfproviderlint@latest ./...

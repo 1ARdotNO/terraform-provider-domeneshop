@@ -14,10 +14,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # govulncheck reports standard-library vulnerabilities against the
+      # toolchain that runs it, so always use the latest stable Go here
+      # rather than the minimum version from go.mod.
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: "go.mod"
+          go-version: "stable"
+          check-latest: true
 
       - name: Run govulncheck
         run: |
