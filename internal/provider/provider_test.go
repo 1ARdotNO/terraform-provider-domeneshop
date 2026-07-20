@@ -1,11 +1,36 @@
 package provider
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
+
+// TestMain starts an in-process mock of the Domeneshop API (validated against
+// the vendored OpenAPI documentation, see mockapi_test.go) unless real API
+// credentials are provided via DOMENESHOP_TOKEN. This makes the acceptance
+// tests hermetic by default: `TF_ACC=1 go test ./internal/provider/` passes
+// without any credentials or network access to Domeneshop.
+func TestMain(m *testing.M) {
+	if os.Getenv("DOMENESHOP_TOKEN") == "" {
+		srv, err := newMockDomeneshop()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to start mock Domeneshop API: %v\n", err)
+			os.Exit(1)
+		}
+		os.Setenv("DOMENESHOP_TOKEN", "test-token")
+		os.Setenv("DOMENESHOP_SECRET", "test-secret")
+		os.Setenv("DOMENESHOP_DOMAIN", "example.com")
+		os.Setenv("DOMENESHOP_DOMAIN_ID", "1")
+		os.Setenv("DOMENESHOP_HOST", srv.URL)
+		code := m.Run()
+		srv.Close()
+		os.Exit(code)
+	}
+	os.Exit(m.Run())
+}
 
 // providerFactories are used to instantiate a provider during acceptance testing.
 // The factory function will be invoked for every Terraform CLI command executed
