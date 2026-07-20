@@ -2,37 +2,39 @@
 
 # Terraform Provider Domeneshop
 
-Available in the [Terraform Registry](https://registry.terraform.io/providers/innovationnorway/domeneshop/latest).
+[![Tests](https://github.com/1ARdotNO/terraform-provider-domeneshop/actions/workflows/test.yml/badge.svg)](https://github.com/1ARdotNO/terraform-provider-domeneshop/actions/workflows/test.yml)
+[![CodeQL](https://github.com/1ARdotNO/terraform-provider-domeneshop/actions/workflows/codeql.yml/badge.svg)](https://github.com/1ARdotNO/terraform-provider-domeneshop/actions/workflows/codeql.yml)
+[![govulncheck](https://github.com/1ARdotNO/terraform-provider-domeneshop/actions/workflows/govulncheck.yml/badge.svg)](https://github.com/1ARdotNO/terraform-provider-domeneshop/actions/workflows/govulncheck.yml)
+
+Terraform provider for the [Domeneshop](https://domene.shop/) (domainnameshop) API:
+manage DNS records and HTTP forwards, and look up domains.
+
+This is a maintained fork of the original
+[innovationnorway/terraform-provider-domeneshop](https://github.com/innovationnorway/terraform-provider-domeneshop)
+(unmaintained since 2021), with support for modern Terraform versions and
+Apple Silicon (`darwin/arm64`) builds.
+
+Available in the [Terraform Registry](https://registry.terraform.io/providers/1ARdotNO/domeneshop/latest):
+
+```hcl
+terraform {
+  required_providers {
+    domeneshop = {
+      source = "1ARdotNO/domeneshop"
+    }
+  }
+}
+```
 
 ## Requirements
 
--	[Terraform](https://www.terraform.io/downloads.html) >= 0.13.x
--	[Go](https://golang.org/doc/install) >= 1.15
-
-## Building The Provider
-
-1. Clone the repository
-1. Enter the repository directory
-1. Build the provider using the Go `install` command: 
-```sh
-$ go install
-```
-
-## Adding Dependencies
-
-This provider uses [Go modules](https://github.com/golang/go/wiki/Modules).
-Please see the Go documentation for the most up to date information about using Go modules.
-
-To add a new dependency `github.com/author/dependency` to your Terraform provider:
-
-```
-go get github.com/author/dependency
-go mod tidy
-```
-
-Then commit the changes to `go.mod` and `go.sum`.
+-	[Terraform](https://developer.hashicorp.com/terraform/downloads) >= 1.5
+-	[Go](https://go.dev/doc/install) >= 1.25 (to build the provider)
 
 ## Using the provider
+
+Credentials are an API token/secret pair, created in the
+[Domeneshop admin panel](https://domene.shop/admin?view=api).
 
 ```hcl
 variable "domeneshop_token" {
@@ -63,23 +65,58 @@ resource "domeneshop_record" "example" {
 }
 ```
 
+See the [provider documentation](https://registry.terraform.io/providers/1ARdotNO/domeneshop/latest/docs)
+for all resources and data sources.
+
+## Building The Provider
+
+1. Clone the repository
+1. Enter the repository directory
+1. Build the provider using the Go `install` command:
+```sh
+$ go install
+```
+
 ## Developing the Provider
 
-If you wish to work on the provider, you'll first need [Go](http://www.golang.org) installed on your machine (see [Requirements](#requirements) above).
-
-To compile the provider, run `go install`. This will build the provider and put the provider binary in the `$GOPATH/bin` directory.
+To compile the provider, run `go install`. This will build the provider and
+put the provider binary in the `$GOPATH/bin` directory.
 
 To generate or update documentation, run `go generate`.
 
-In order to run the full suite of Acceptance tests, run `make testacc`.
+### Testing
 
-*Note:* Acceptance tests create real resources, and often cost money to run.
+The acceptance tests run hermetically by default: they start an in-process
+mock of the Domeneshop API that validates every request and response against
+the official [API documentation](https://api.domeneshop.no/docs/) (vendored as
+`internal/provider/testdata/openapi.json`). No credentials or network access
+are needed:
 
 ```sh
-$ make testacc
+$ TF_ACC=1 go test ./internal/provider/
 ```
 
-The following environment variables must be set to run acceptance tests:
+Traffic that does not match the API documentation fails the tests with a
+contract-violation error. Known divergences between the documentation and the
+generated API client are reported as `[api-contract]` notes in the test
+output.
+
+To run the same suite against the real API instead, set:
+
 - `DOMENESHOP_TOKEN`
 - `DOMENESHOP_SECRET`
-- `DOMENESHOP_DOMAIN`
+- `DOMENESHOP_DOMAIN` (a domain on the account the tests may write to)
+
+*Note:* against the real API, the acceptance tests create real resources.
+
+### CI and dependencies
+
+Every pull request must pass the required checks (build, acceptance tests
+against Terraform 1.5/1.6/1.9, `tfproviderlint`, CodeQL and `govulncheck`)
+before it can merge. [Renovate](https://docs.renovatebot.com/) keeps
+dependencies current and auto-merges updates that keep the checks green.
+
+## Releasing
+
+Releases are built and signed by the `release` workflow when a `v*` tag is
+pushed, and published to the Terraform Registry.
